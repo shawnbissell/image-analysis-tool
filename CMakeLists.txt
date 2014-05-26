@@ -23,15 +23,33 @@ ExternalProject_Add(libwebp
     INSTALL_COMMAND ""
 )
 
+ExternalProject_Add(giflib
+    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
+    URL http://sourceforge.net/projects/giflib/files/giflib-5.1.0.tar.gz
+    URL_MD5 40248cb52f525dc82981761628dbd853
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/giflib
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/giflib/configure --prefix=<INSTALL_DIR>
+    BUILD_COMMAND ${MAKE}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+)
+
 
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/third_party/chromium/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/pagespeed/kernel)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/libwebp/src)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/giflib/lib)
 
 
 add_executable(imgt ImageTools.cc Image.cc)
 
 add_dependencies(imgt libwebp)
+add_dependencies(imgt giflib)
 add_dependencies(imgt psol)
 
-target_link_libraries(imgt ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a pthread ${PROJECT_BINARY_DIR}/libwebp/src/.libs/libwebp.a)
+target_link_libraries(imgt ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a 
+                            pthread 
+                            ${PROJECT_BINARY_DIR}/libwebp/src/.libs/libwebp.a
+                            ${PROJECT_BINARY_DIR}/giflib/lib/.libs/libgif.a
+)

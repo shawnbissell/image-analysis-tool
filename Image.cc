@@ -17,7 +17,13 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 #include "net/instaweb/rewriter/public/image_data_lookup.h"
-#include "third_party/libwebp/webp/decode.h"
+#include "webp/decode.h"
+#include "pagespeed/kernel/image/scanline_utils.h"
+
+extern "C" {
+#include "gif_lib.h"
+}
+
 
 using namespace pagespeed::image_compression;
 
@@ -50,7 +56,9 @@ const int64 kQualityForJpegWithUnkownQuality = 85;
 Image::Image() :  
         imageFormat_(IMAGE_UNKNOWN),
         analyzed_(false),
-        isImage_(false),
+        isPhoto_(false),
+        isAnimated_(false),
+        frames_(1),
         hasTransparency_(false) {
     
 }
@@ -69,36 +77,76 @@ bool Image::readFile(const GoogleString& file_name) {
   return(file_system.ReadFile(file_name.c_str(), &writer, &messageHandler));
 }
 
+
+int ReadGifFromStream(GifFileType* gif_file, GifByteType* data, int length) {
+  pagespeed::image_compression::ScanlineStreamInput* input =
+    static_cast<pagespeed::image_compression::ScanlineStreamInput*>(
+      gif_file->UserData);
+  if (input->offset() + length <= input->length()) {
+    memcpy(data, input->data() + input->offset(), length);
+    input->set_offset(input->offset() + length);
+    return length;
+  } else {
+    fprintf(stderr, "Unexpected EOF.");
+    return 0;
+  }
+}
+
 bool Image::analyze() {
 
     net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
     
     ComputeImageType();
     
-    if(AnalyzeImage(imageFormat_, content_.data(),
-                        content_.length(), &messageHandler,
-                        &hasTransparency_, &isImage_)) {
+    if(imageFormat_ == pagespeed::image_compression::IMAGE_GIF) {
+       
+        ScanlineStreamInput input(NULL);
+        input.Initialize(content_);
+        GifFileType* gif = DGifOpen(&input, ReadGifFromStream, NULL);
+        if (!gif) {
+            fprintf(stderr, "Failed to get image descriptor.");
+            analyzed_ = false;
+            return false;
+        }
+        DGifSlurp(gif);
+        frames_ = gif->ImageCount;
+        if (frames_ > 1) {
+            isAnimated_ = true;
+        }
+    }
         
-        analyzed_ = true;
+    if(!isAnimated_) {
+        if(AnalyzeImage(imageFormat_, content_.data(),
+                            content_.length(), &messageHandler,
+                            &hasTransparency_, &isPhoto_)) {
+
+            analyzed_ = true;
+        }
     }
 }
 
-bool Image::isImage() {
-    return isImage_;
+bool Image::isPhoto() {
+    return isPhoto_;
 }
-bool Image::hasTransparency(){
+bool Image::hasTransparency() {
     return hasTransparency_;
 }
+bool Image::isAnimated() {
+    return isAnimated_;
+}
 
-ImageFormat Image::imageFormat(){
+ImageFormat Image::imageFormat() {
     return imageFormat_;
 }
 
-int Image::height(){
+int Image::height() { 
     return height_;
 }
 int Image::width() {
     return width_;
+}
+int Image::frames() {
+    return frames_;
 }
 
 const char* Image::imageFormatAsString(){
@@ -143,8 +191,8 @@ void Image::FindJpegSize() {
       // actually 8 + 3 * buf[pos+2], but for our purposes this
       // will suffice as we don't parse subsequent metadata (which
       // describes the formatting of chunks of image data).
-      height_= net_instaweb::JpegIntAtPosition(buf, pos + 1 + ImageHeaders::kJpegIntSize);
-      width_ = net_instaweb::JpegIntAtPosition(buf, pos + 1 + 2 * ImageHeaders::kJpegIntSize);
+      height_ = net_instaweb::JpegIntAtPosition(buf, pos + 1 + ImageHeaders::kJpegIntSize);
+      width_  = net_instaweb::JpegIntAtPosition(buf, pos + 1 + 2 * ImageHeaders::kJpegIntSize);
       break;
     }
     pos += length;

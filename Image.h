@@ -11,6 +11,8 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_util.h"
 
+
+
 using namespace pagespeed::image_compression;
 
 class Image {
@@ -21,23 +23,28 @@ public:
     
     bool readFile(const GoogleString& file_name);
     bool analyze();
-    bool isImage();
+    bool isPhoto();
+    bool isAnimated();
     bool hasTransparency();
     
     ImageFormat imageFormat();
     const char * imageFormatAsString();
     int height();
     int width();
+    int frames();
  
     
 private:
     GoogleString content_;
     pagespeed::image_compression::ImageFormat imageFormat_;
     bool analyzed_;
-    bool isImage_;
+    bool isPhoto_;
+    bool isAnimated_;
     bool hasTransparency_;
     int height_;
     int width_;
+    int frames_;
+    
     
     void ComputeImageType();
     void FindJpegSize();
@@ -45,6 +52,7 @@ private:
     void FindGifSize();
     void FindWebpSize();
     
+   
 
 };
 
