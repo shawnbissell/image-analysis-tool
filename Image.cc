@@ -108,11 +108,70 @@ bool Image::analyze() {
             analyzed_ = false;
             return false;
         }
-        DGifSlurp(gif);
-        frames_ = gif->ImageCount;
-        if (frames_ > 1) {
-            isAnimated_ = true;
+        if(DGifSlurp(gif)) {
+            frames_ = gif->ImageCount;
+            if (frames_ <= 0) {
+                fprintf(stderr, "No frames in gif file.");
+                return false;
+            }
+            if (frames_ > 1) {
+                isAnimated_ = true;
+            }
+            
+            /*
+            int transparentcolor = 0;
+            
+            for (int j = 0; j < gif->SavedImages[0].ExtensionBlockCount; j++) {
+                switch (gif->SavedImages[0].ExtensionBlocks[j].Function) {
+                    case GRAPHICS_EXT_FUNC_CODE:
+                    {
+                        if (gif->SavedImages[0].ExtensionBlocks[j].ByteCount == 4) {
+                            if ((gif->SavedImages[0].ExtensionBlocks[j].Bytes[0] & 0x01) > 0) {
+                                
+                                //hasTransparency_ = true;
+                                transparentcolor = (int) gif->SavedImages[0].ExtensionBlocks[j].Bytes[3];
+                                fprintf(stdout, "TransparentColor=%i\n", transparentcolor); 
+                            }
+                        }
+                    }
+                }
+            }
+            */
+            int width  = gif->Image.Width;
+            int height = gif->Image.Height;
+            GraphicsControlBlock gcb;
+            if(DGifSavedExtensionToGCB(gif, 0, &gcb)) {
+                //fprintf(stdout, "TransparentColor=%i\n", gcb.TransparentColor);  
+                for(int i=0; i < gif->ImageCount; i++) {
+                    unsigned char *ptr = gif->SavedImages[i].RasterBits;
+                    int color;
+                    for (int j=height-1; j>=0; j--)
+                    {
+                        int index = 3*j*width;
+                        for (int i=0; i < width; i++)
+                        {
+                            color = *ptr++;
+                            if(color == gcb.TransparentColor) {
+                                hasTransparency_ = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+            } else {
+                fprintf(stderr, "Could not obtain GraphicsControlBlock for gif.");
+                
+                return false;
+            }
+            
         }
+        else {
+            fprintf(stderr, "Failed to analyze gif image.");
+            return false;
+        }
+        DGifCloseFile(gif, NULL);
+        
     }
         
     if(!isAnimated_) {

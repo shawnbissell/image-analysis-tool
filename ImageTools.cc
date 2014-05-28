@@ -97,11 +97,11 @@ int main(int argc, char *argv[]) {
     image.readFile(fileName);
     
     if(image.analyze()) {
-        fprintf(stdout, "\tformat=%s\n",  image.imageFormatAsString());
-        fprintf(stdout, "\twidth=%i\n\theight=%i\n", image.width(), image.height());
-        fprintf(stdout, "\tphoto=%i\n\ttransparent=%i\n", image.isPhoto(), image.hasTransparency());  
-        fprintf(stdout, "\tanimated=%i\n", image.isAnimated());  
-        fprintf(stdout, "\tframes=%i\n", image.frames()); 
+        fprintf(stdout, "format=%s\n",  image.imageFormatAsString());
+        fprintf(stdout, "width=%i\nheight=%i\n", image.width(), image.height());
+        fprintf(stdout, "photo=%i\ntransparent=%i\n", image.isPhoto(), image.hasTransparency());  
+        fprintf(stdout, "animated=%i\n", image.isAnimated());  
+        fprintf(stdout, "frames=%i\n", image.frames()); 
     } else {
         fprintf(stderr, "Could not analyze image");
     }
