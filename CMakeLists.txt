@@ -49,7 +49,7 @@ add_dependencies(imgt giflib)
 add_dependencies(imgt psol)
 
 target_link_libraries(imgt ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a 
-                            pthread 
+                            pthread rt
                             ${PROJECT_BINARY_DIR}/libwebp/src/.libs/libwebp.a
                             ${PROJECT_BINARY_DIR}/giflib/lib/.libs/libgif.a
 )
