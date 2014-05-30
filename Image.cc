@@ -209,7 +209,16 @@ int Image::frames() {
 }
 
 const char* Image::imageFormatAsString(){
-    return ImageFormatToMimeTypeString(imageFormat_);
+    
+    switch(imageFormat_)
+    {
+    case pagespeed::image_compression::IMAGE_JPEG: return "JPEG";
+    case pagespeed::image_compression::IMAGE_GIF: return "GIF";
+    case pagespeed::image_compression::IMAGE_PNG: return "PNG";
+    case pagespeed::image_compression::IMAGE_WEBP: return "WEBP";
+    default: return "UNKNOWN";
+    }
+  
 }
     
 
