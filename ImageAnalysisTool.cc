@@ -29,15 +29,16 @@
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/base/string_writer.h"
 
+#include "ImageAnalysisToolConfig.h"
 #include "Image.h"
 #include <getopt.h>
 
-/* The name of this program.  */
 const char* program_name;
 
 void print_usage (FILE* stream, int exit_code)
 {
-    fprintf (stream, "Version: Image Tools (v0.1) https://github.com/shawnbissell/image-tools\n");
+    fprintf (stream, "Version: Image Analysis Tool %i.%i https://github.com/shawnbissell/image-analysis-tool\n", 
+                    ImageAnalysisTool_VERSION_MAJOR, ImageAnalysisTool_VERSION_MINOR);
     fprintf (stream, "Copyright: Shawn Bissell (C) 2014\n");
     fprintf (stream, "Usage:  %s options [ inputfile ... ]\n", program_name);
     fprintf (stream,
@@ -60,7 +61,6 @@ int main(int argc, char *argv[]) {
     /* An array describing valid long options.  */
     const struct option long_options[] = {
         { "help",       0, NULL, 'h' },
-        //{ "output",       1, NULL, 'o' },
         { "verbose",    0, NULL, 'v' },
         { "photo",      0, NULL, 'p' },
         { "transparency",0,NULL, 't' },

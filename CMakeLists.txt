@@ -1,5 +1,12 @@
 cmake_minimum_required (VERSION 2.6)
-project (image-tools)
+project (image-analysis-tool)
+
+set (ImageAnalysisTool_VERSION_MAJOR 0)
+set (ImageAnalysisTool_VERSION_MINOR 2)
+configure_file (
+  "${PROJECT_SOURCE_DIR}/ImageAnalysisToolConfig.h.in"
+  "${PROJECT_BINARY_DIR}/ImageAnalysisToolConfig.h"
+  )
 
 include(ExternalProject)
 ExternalProject_Add(psol
@@ -34,7 +41,7 @@ ExternalProject_Add(giflib
     INSTALL_COMMAND ""
 )
 
-
+include_directories(${PROJECT_BINARY_DIR})
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/third_party/chromium/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/pagespeed/kernel)
@@ -42,14 +49,18 @@ include_directories(${CMAKE_CURRENT_BINARY_DIR}/libwebp/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/giflib/lib)
 
 
-add_executable(imgt ImageTools.cc Image.cc)
+add_executable(imgat ImageAnalysisTool.cc Image.cc)
 
-add_dependencies(imgt libwebp)
-add_dependencies(imgt giflib)
-add_dependencies(imgt psol)
+add_dependencies(imgat libwebp)
+add_dependencies(imgat giflib)
+add_dependencies(imgat psol)
 
-target_link_libraries(imgt ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a 
+target_link_libraries(imgat ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a 
                             pthread rt
                             ${PROJECT_BINARY_DIR}/libwebp/src/.libs/libwebp.a
                             ${PROJECT_BINARY_DIR}/giflib/lib/.libs/libgif.a
+)
+
+install(TARGETS imgat
+        RUNTIME DESTINATION bin
 )

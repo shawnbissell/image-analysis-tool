@@ -1,0 +1,15 @@
+/* 
+ * File:   ImageAnalysisToolConfig.h.in
+ * Author: shawn
+ *
+ * Created on May 31, 2014, 9:52 AM
+ */
+
+#ifndef IMAGEANALYSISTOOLCONFIG_H_IN
+#define	IMAGEANALYSISTOOLCONFIG_H_IN
+
+#define ImageAnalysisTool_VERSION_MAJOR @ImageAnalysisTool_VERSION_MAJOR@
+#define ImageAnalysisTool_VERSION_MINOR @ImageAnalysisTool_VERSION_MINOR@
+
+#endif	/* IMAGEANALYSISTOOLCONFIG_H_IN */
+
