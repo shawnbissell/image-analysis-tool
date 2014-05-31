@@ -1,5 +1,5 @@
 #image-tools
-The imgt command is similar to the ImageMagick identify command. It provides basic image format, width, height, etc information. The main goal is to expose the image analysis features in the pagespeed library as a command line interface including the complex analysis for determining if the specified image is a photo or a computer generated image. Also uses libgif analzye animated gifs and properly determine transparency based on whether or not the transparent colour is actually used.
+The imgt command is similar to the ImageMagick identify command. It provides basic image format, width, height, etc information. The main goal is to expose the image analysis features in the pagespeed library as a command line interface including the complex analysis for determining if the specified image is a photo or a computer generated image. Also uses libgif to analzye animated gifs and properly determine transparency based on whether or not the transparent colour is actually used.
 
 ##Install
   * Only builds on x64 Linux. 
@@ -23,7 +23,7 @@ Usage:  imgt options [ inputfile ... ]
 ```
 ##Example
 ```
-./imgt -A animated.gif 
+imgt -A animated.gif 
 format=GIF
 width=365
 height=360
