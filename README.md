@@ -6,12 +6,16 @@ The `imgt` command is similar to the ImageMagick `identify` command. It provides
   * Requires cmake 2.6 or above and uses ExternalProject module.
   * Automatically downloads the pagespeed binary and statically links to it. 
   * Automatically downloads libgif and libpng and builds local copy to link with.
-  * There is no acutal install step yet.
 ```
 mkdir build
 cd build
 cmake ..
 make
+sudo make install
+```
+  * Installs to /usr/local/bin by default, but change be changed with CMAKE_INSTALL_PREFIX
+```
+cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/imgat ..
 ```
 ##Usage
 ```
