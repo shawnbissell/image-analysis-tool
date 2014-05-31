@@ -1,8 +1,17 @@
-/* 
- * File:   Image.h
- * Author: shawn
+/*
+ * Copyright 2014 Shawn Bissell 
  *
- * Created on May 13, 2014, 11:04 PM
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #ifndef IMAGE_H
@@ -10,6 +19,10 @@
 
 #include "pagespeed/kernel/base/string_util.h"
 #include "pagespeed/kernel/image/image_util.h"
+
+extern "C" {
+#include "gif_lib.h"
+}
 
 
 
@@ -22,7 +35,7 @@ public:
     virtual ~Image();
     
     bool readFile(const GoogleString& file_name);
-    bool analyze();
+    bool analyze(bool verbose, bool checkTransparency, bool checkAnimated, bool checkPhoto);
     bool isPhoto();
     bool isAnimated();
     bool hasTransparency();
@@ -45,6 +58,7 @@ private:
     int width_;
     int frames_;
     
+    bool  CheckTranparentColorUsed(const GifFileType* gif, int transparentColor);
     
     void ComputeImageType();
     void FindJpegSize();

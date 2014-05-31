@@ -1,8 +1,17 @@
-/* 
- * File:   Image.cc
- * Author: shawn
- * 
- * Created on May 13, 2014, 11:04 PM
+/*
+ * Copyright 2014 Shawn Bissell 
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
  */
 
 #include "Image.h"
@@ -20,9 +29,7 @@
 #include "webp/decode.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
-extern "C" {
-#include "gif_lib.h"
-}
+
 
 
 using namespace pagespeed::image_compression;
@@ -92,77 +99,43 @@ int ReadGifFromStream(GifFileType* gif_file, GifByteType* data, int length) {
   }
 }
 
-bool Image::analyze() {
+bool Image::analyze(bool verbose, bool checkTransparency, bool checkAnimated, bool checkPhoto) {
 
     net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
     
     ComputeImageType();
     
-    if(imageFormat_ == pagespeed::image_compression::IMAGE_GIF) {
-       
+    if(imageFormat_ == pagespeed::image_compression::IMAGE_GIF && (checkTransparency || checkAnimated)) {
+        if(verbose) fprintf(stdout, "libgif: analyzing gif image\n"); 
         ScanlineStreamInput input(NULL);
         input.Initialize(content_);
         GifFileType* gif = DGifOpen(&input, ReadGifFromStream, NULL);
         if (!gif) {
             fprintf(stderr, "Failed to get image descriptor.");
-            analyzed_ = false;
             return false;
         }
         if(DGifSlurp(gif)) {
             frames_ = gif->ImageCount;
+            if(verbose) fprintf(stdout, "libgif: Frames=%i\n", frames_);  
             if (frames_ <= 0) {
                 fprintf(stderr, "No frames in gif file.");
                 return false;
             }
             if (frames_ > 1) {
+                if(verbose) fprintf(stdout, "libgif: IsAnimated=1\n"); 
                 isAnimated_ = true;
             }
             
-            /*
-            int transparentcolor = 0;
-            
-            for (int j = 0; j < gif->SavedImages[0].ExtensionBlockCount; j++) {
-                switch (gif->SavedImages[0].ExtensionBlocks[j].Function) {
-                    case GRAPHICS_EXT_FUNC_CODE:
-                    {
-                        if (gif->SavedImages[0].ExtensionBlocks[j].ByteCount == 4) {
-                            if ((gif->SavedImages[0].ExtensionBlocks[j].Bytes[0] & 0x01) > 0) {
-                                
-                                //hasTransparency_ = true;
-                                transparentcolor = (int) gif->SavedImages[0].ExtensionBlocks[j].Bytes[3];
-                                fprintf(stdout, "TransparentColor=%i\n", transparentcolor); 
-                            }
-                        }
-                    }
+            if(checkTransparency) {
+                GraphicsControlBlock gcb;
+                if(DGifSavedExtensionToGCB(gif, 0, &gcb)) {
+                    if(verbose) fprintf(stdout, "libgif: TransparentColor=%i\n", gcb.TransparentColor);  
+                    bool isTransparent = CheckTranparentColorUsed(gif, gcb.TransparentColor);               
+                    if(verbose) fprintf(stdout, "libgif: IsTransparent=%i\n", isTransparent);
+                } else {
+                    fprintf(stderr, "Could not obtain GraphicsControlBlock for gif.");
+                    return false;
                 }
-            }
-            */
-            int width  = gif->Image.Width;
-            int height = gif->Image.Height;
-            GraphicsControlBlock gcb;
-            if(DGifSavedExtensionToGCB(gif, 0, &gcb)) {
-                //fprintf(stdout, "TransparentColor=%i\n", gcb.TransparentColor);  
-                for(int i=0; i < gif->ImageCount; i++) {
-                    unsigned char *ptr = gif->SavedImages[i].RasterBits;
-                    int color;
-                    for (int j=height-1; j>=0; j--)
-                    {
-                        int index = 3*j*width;
-                        for (int i=0; i < width; i++)
-                        {
-                            color = *ptr++;
-                            if(color == gcb.TransparentColor) {
-                                hasTransparency_ = true;
-                                break;
-                            }
-                        }
-                    }
-                }
-                
-            } else {
-                fprintf(stderr, "Could not obtain GraphicsControlBlock for gif.");
-                
-                return false;
             }
             
         }
@@ -171,17 +144,38 @@ bool Image::analyze() {
             return false;
         }
         DGifCloseFile(gif, NULL);
-        
     }
         
-    if(!isAnimated_) {
+    if(!isAnimated_ && (checkTransparency || checkPhoto)) {
+        if(verbose) fprintf(stdout, "pagespeed: analyzing image\n"); 
         if(AnalyzeImage(imageFormat_, content_.data(),
                             content_.length(), &messageHandler,
                             &hasTransparency_, &isPhoto_)) {
-
-            analyzed_ = true;
+            if(verbose) fprintf(stdout, "pagespeed: HasTransparency=%i\n", hasTransparency_); 
+            if(verbose) fprintf(stdout, "pagespeed: IsPhoto=%i\n", isPhoto_);  
         }
     }
+    analyzed_ = true;
+}
+
+bool Image::CheckTranparentColorUsed(const GifFileType* gif, int transparentColor) {
+    int width  = gif->Image.Width;
+    int height = gif->Image.Height;
+    for(int i=0; i < gif->ImageCount; i++) {
+        unsigned char *ptr = gif->SavedImages[i].RasterBits;
+        int color;
+        for (int j=height-1; j>=0; j--) {
+            int index = 3*j*width;
+            for (int i=0; i < width; i++) {
+                color = *ptr++;
+                if(color == transparentColor) {
+                    hasTransparency_ = true;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
 }
 
 bool Image::isPhoto() {
@@ -222,7 +216,9 @@ const char* Image::imageFormatAsString(){
 }
     
 
-//code from ImageImpl
+//From modpagespeed ImageImpl Class
+//Code below this point is adapted from 
+//https://code.google.com/p/modpagespeed/source/browse/trunk/src/net/instaweb/rewriter/image.cc
 
 // Looks through blocks of jpeg stream to find SOFn block
 // indicating encoding and dimensions of image.
