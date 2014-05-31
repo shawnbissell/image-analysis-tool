@@ -1,5 +1,5 @@
 #Image Analysis Tool
-The `imgt` command is similar to the ImageMagick `identify` command. It provides basic image format, width, height, etc information. The main goal is to expose the image analysis features in the pagespeed library as a command line interface including the complex analysis for determining if the specified image is a photo or a computer generated image. Also uses libgif to analzye animated gifs and properly determine transparency based on whether or not the transparent colour is actually used.
+The `imgat` command is similar to the ImageMagick `identify` command. It provides basic image format, width, height, etc information. The main goal is to expose the image analysis features in the pagespeed library as a command line interface including the complex analysis for determining if the specified image is a photo or a computer generated image. Also uses libgif to analzye animated gifs and properly determine transparency based on whether or not the transparent colour is actually used.
 
 ##Install
   * Only builds on x64 Linux. 
@@ -19,7 +19,7 @@ cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/imgat ..
 ```
 ##Usage
 ```
-Usage:  imgt options [ inputfile ... ]
+Usage:  imgat options [ inputfile ... ]
   -h  --help             Display this usage information.
   -p  --photo            Check if the image is a photo.
   -t  --transparency     Check if the image usage transparency.
@@ -29,7 +29,7 @@ Usage:  imgt options [ inputfile ... ]
 ```
 ##Example
 ```
-imgt -A animated.gif 
+imgat -A animated.gif 
 format=GIF
 width=365
 height=360
