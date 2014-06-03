@@ -11,7 +11,7 @@ configure_file (
 include(ExternalProject)
 ExternalProject_Add(psol
     DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
-    URL https://dl.google.com/dl/page-speed/psol/1.8.31.2.tar.gz
+    URL http://dl.google.com/dl/page-speed/psol/1.8.31.2.tar.gz
     URL_MD5 efa3fe52226f15827ffff50537dde368
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/psol
     CONFIGURE_COMMAND ""
@@ -21,7 +21,7 @@ ExternalProject_Add(psol
 
 ExternalProject_Add(libwebp
     DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
-    URL https://webp.googlecode.com/files/libwebp-0.4.0.tar.gz
+    URL http://webp.googlecode.com/files/libwebp-0.4.0.tar.gz
     URL_MD5 c8dd1d26eb9566833aba269b86d97e68
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libwebp
     CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/libwebp/configure --prefix=<INSTALL_DIR>
