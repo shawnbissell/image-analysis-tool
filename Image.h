@@ -28,6 +28,16 @@ extern "C" {
 
 using namespace pagespeed::image_compression;
 
+enum Format {
+  IMAGE_FORMAT_UNKNOWN,
+  IMAGE_FORMAT_JPEG,
+  IMAGE_FORMAT_PNG,
+  IMAGE_FORMAT_GIF,
+  IMAGE_FORMAT_WEBP,
+  IMAGE_FORMAT_JP2K,
+  IMAGE_FORMAT_JXR
+};
+
 class Image {
 public:
     Image();
@@ -40,8 +50,9 @@ public:
     bool isAnimated();
     bool hasTransparency();
     
-    ImageFormat imageFormat();
+    Format imageFormat();
     const char * imageFormatAsString();
+    ImageFormat getGoogleImageFormat();
     int height();
     int width();
     int frames();
@@ -49,7 +60,7 @@ public:
     
 private:
     GoogleString content_;
-    pagespeed::image_compression::ImageFormat imageFormat_;
+    Format imageFormat_;
     bool analyzed_;
     bool isPhoto_;
     bool isAnimated_;

@@ -61,7 +61,7 @@ const int64 kQualityForJpegWithUnkownQuality = 85;
 
 
 Image::Image() :  
-        imageFormat_(IMAGE_UNKNOWN),
+        imageFormat_(IMAGE_FORMAT_UNKNOWN),
         analyzed_(false),
         isPhoto_(false),
         isAnimated_(false),
@@ -105,7 +105,7 @@ bool Image::analyze(bool verbose, bool checkTransparency, bool checkAnimated, bo
     
     ComputeImageType();
     
-    if(imageFormat_ == pagespeed::image_compression::IMAGE_GIF && (checkTransparency || checkAnimated)) {
+    if(imageFormat_ == IMAGE_FORMAT_GIF && (checkTransparency || checkAnimated)) {
         if(verbose) fprintf(stdout, "libgif: analyzing gif image\n"); 
         ScanlineStreamInput input(NULL);
         input.Initialize(content_);
@@ -148,7 +148,7 @@ bool Image::analyze(bool verbose, bool checkTransparency, bool checkAnimated, bo
         
     if(!isAnimated_ && (checkTransparency || checkPhoto)) {
         if(verbose) fprintf(stdout, "pagespeed: analyzing image\n"); 
-        if(AnalyzeImage(imageFormat_, content_.data(),
+        if(AnalyzeImage(getGoogleImageFormat(), content_.data(),
                             content_.length(), &messageHandler,
                             &hasTransparency_, &isPhoto_)) {
             if(verbose) fprintf(stdout, "pagespeed: HasTransparency=%i\n", hasTransparency_); 
@@ -188,7 +188,7 @@ bool Image::isAnimated() {
     return isAnimated_;
 }
 
-ImageFormat Image::imageFormat() {
+Format Image::imageFormat() {
     return imageFormat_;
 }
 
@@ -206,13 +206,27 @@ const char* Image::imageFormatAsString(){
     
     switch(imageFormat_)
     {
-    case pagespeed::image_compression::IMAGE_JPEG: return "JPEG";
-    case pagespeed::image_compression::IMAGE_GIF: return "GIF";
-    case pagespeed::image_compression::IMAGE_PNG: return "PNG";
-    case pagespeed::image_compression::IMAGE_WEBP: return "WEBP";
-    default: return "UNKNOWN";
+        case IMAGE_FORMAT_JP2K: return "JP2K";
+        case IMAGE_FORMAT_JXR: return "JXR";
+        case IMAGE_FORMAT_JPEG: return "JPEG";
+        case IMAGE_FORMAT_GIF: return "GIF";
+        case IMAGE_FORMAT_PNG: return "PNG";
+        case IMAGE_FORMAT_WEBP: return "WEBP";
+        default: return "UNKNOWN";
     }
   
+}
+
+ImageFormat Image::getGoogleImageFormat()
+{
+    switch(imageFormat_)
+    {
+        case IMAGE_FORMAT_JPEG: return IMAGE_JPEG;
+        case IMAGE_FORMAT_GIF: return IMAGE_GIF;
+        case IMAGE_FORMAT_PNG: return IMAGE_PNG;
+        case IMAGE_FORMAT_WEBP: return IMAGE_WEBP;
+        default: return IMAGE_UNKNOWN;
+    }
 }
     
 
@@ -326,15 +340,37 @@ void Image::ComputeImageType() {
   // Note that we can be fooled if we're passed random binary data;
   // we make the call based on as few as two bytes (JPEG).
   const StringPiece& buf = content_;
+  fprintf(stdout, "debug:buf.size %ld\n", buf.size());
   if (buf.size() >= 8) {
+    fprintf(stdout, "debug:buf[0] %d\n", net_instaweb::CharToInt(buf[0]));
+    fprintf(stdout, "debug:buf[1] %d\n", net_instaweb::CharToInt(buf[1]));
+    fprintf(stdout, "debug:buf[2] %d\n", net_instaweb::CharToInt(buf[2]));
+    fprintf(stdout, "debug:buf[3] %d\n", net_instaweb::CharToInt(buf[3]));
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
     switch (net_instaweb::CharToInt(buf[0])) {
+      case 0x00:
+          //possilbe jp2k
+          if (net_instaweb::CharToInt(buf[1]) == 0x00
+                  && net_instaweb::CharToInt(buf[2]) == 0x00
+                  && net_instaweb::CharToInt(buf[3]) == 0x0c 
+                  && net_instaweb::CharToInt(buf[4]) == 0x6a 
+                  && net_instaweb::CharToInt(buf[5]) == 0x50
+                  && net_instaweb::CharToInt(buf[6]) == 0x20 
+                  && net_instaweb::CharToInt(buf[7]) == 0x20) {
+              imageFormat_ = IMAGE_FORMAT_JP2K;
+          }
+              
       case 0xff:
         // Either jpeg or jpeg2
         // (the latter we don't handle yet, and don't bother looking for).
+        fprintf(stdout, "debug:buf[1] %d\n", net_instaweb::CharToInt(buf[1]));
         if (net_instaweb::CharToInt(buf[1]) == 0xd8) {
-          imageFormat_ = pagespeed::image_compression::IMAGE_JPEG;
+          imageFormat_ = IMAGE_FORMAT_JPEG;
+          FindJpegSize();
+        }
+        if (net_instaweb::CharToInt(buf[1]) == 0x4f) {
+          imageFormat_ = IMAGE_FORMAT_JP2K;
           FindJpegSize();
         }
         break;
@@ -343,7 +379,7 @@ void Image::ComputeImageType() {
         if (StringPiece(buf.data(), ImageHeaders::kPngHeaderLength) ==
             StringPiece(ImageHeaders::kPngHeader,
                         ImageHeaders::kPngHeaderLength)) {
-          imageFormat_ = pagespeed::image_compression::IMAGE_PNG;
+          imageFormat_ = IMAGE_FORMAT_PNG;
           FindPngSize();
         }
         break;
@@ -355,7 +391,7 @@ void Image::ComputeImageType() {
             (buf[ImageHeaders::kGifHeaderLength] == '7' ||
              buf[ImageHeaders::kGifHeaderLength] == '9') &&
             buf[ImageHeaders::kGifHeaderLength + 1] == 'a') {
-          imageFormat_ = pagespeed::image_compression::IMAGE_GIF;
+          imageFormat_ = IMAGE_FORMAT_GIF;
           FindGifSize();
         }
         break;
@@ -366,9 +402,9 @@ void Image::ComputeImageType() {
         if (buf.size() >= 20 && buf.substr(1, 3) == "IFF" &&
             buf.substr(8, 4) == "WEBP") {
           if (buf.substr(12, 4) == "VP8L") {
-            imageFormat_ = pagespeed::image_compression::IMAGE_WEBP;
+            imageFormat_ = IMAGE_FORMAT_WEBP;
           } else {
-            imageFormat_ = pagespeed::image_compression::IMAGE_WEBP;
+            imageFormat_ = IMAGE_FORMAT_WEBP;
           }
           FindWebpSize();
         }
