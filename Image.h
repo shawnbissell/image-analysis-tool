@@ -71,7 +71,7 @@ private:
     
     bool  CheckTranparentColorUsed(const GifFileType* gif, int transparentColor);
     
-    void ComputeImageType();
+    void ComputeImageType(bool verbose);
     void FindJpegSize();
     void FindPngSize();
     void FindGifSize();

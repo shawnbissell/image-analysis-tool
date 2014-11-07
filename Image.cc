@@ -62,6 +62,8 @@ const int64 kQualityForJpegWithUnkownQuality = 85;
 
 Image::Image() :  
         imageFormat_(IMAGE_FORMAT_UNKNOWN),
+        height_(0),
+        width_(0),
         analyzed_(false),
         isPhoto_(false),
         isAnimated_(false),
@@ -103,7 +105,7 @@ bool Image::analyze(bool verbose, bool checkTransparency, bool checkAnimated, bo
 
     net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
     
-    ComputeImageType();
+    ComputeImageType(verbose);
     
     if(imageFormat_ == IMAGE_FORMAT_GIF && (checkTransparency || checkAnimated)) {
         if(verbose) fprintf(stdout, "libgif: analyzing gif image\n"); 
@@ -334,23 +336,23 @@ void Image::FindWebpSize() {
 
 // Looks at image data in order to determine image type, and also fills in any
 // dimension information it can (setting image_type_ and dims_).
-void Image::ComputeImageType() {
+void Image::ComputeImageType(bool verbose) {
   // Image classification based on buffer contents gakked from leptonica,
   // but based on well-documented headers (see Wikipedia etc.).
   // Note that we can be fooled if we're passed random binary data;
   // we make the call based on as few as two bytes (JPEG).
   const StringPiece& buf = content_;
-  fprintf(stdout, "debug:buf.size %ld\n", buf.size());
+  if (verbose) fprintf(stdout, "buffer.size %ld\n", buf.size());
   if (buf.size() >= 8) {
-    fprintf(stdout, "debug:buf[0] %d\n", net_instaweb::CharToInt(buf[0]));
-    fprintf(stdout, "debug:buf[1] %d\n", net_instaweb::CharToInt(buf[1]));
-    fprintf(stdout, "debug:buf[2] %d\n", net_instaweb::CharToInt(buf[2]));
-    fprintf(stdout, "debug:buf[3] %d\n", net_instaweb::CharToInt(buf[3]));
+    if (verbose) fprintf(stdout, "buffer[0] %d\n", net_instaweb::CharToInt(buf[0]));
+    if (verbose) fprintf(stdout, "buffer[1] %d\n", net_instaweb::CharToInt(buf[1]));
+    if (verbose) fprintf(stdout, "buffer[2] %d\n", net_instaweb::CharToInt(buf[2]));
+    if (verbose) fprintf(stdout, "buffer[3] %d\n", net_instaweb::CharToInt(buf[3]));
     // Note that gcc rightly complains about constant ranges with the
     // negative char constants unless we cast.
     switch (net_instaweb::CharToInt(buf[0])) {
       case 0x00:
-          //possilbe jp2k
+          //possible jp2k
           if (net_instaweb::CharToInt(buf[1]) == 0x00
                   && net_instaweb::CharToInt(buf[2]) == 0x00
                   && net_instaweb::CharToInt(buf[3]) == 0x0c 
@@ -360,17 +362,13 @@ void Image::ComputeImageType() {
                   && net_instaweb::CharToInt(buf[7]) == 0x20) {
               imageFormat_ = IMAGE_FORMAT_JP2K;
           }
+          break;
               
       case 0xff:
         // Either jpeg or jpeg2
         // (the latter we don't handle yet, and don't bother looking for).
-        fprintf(stdout, "debug:buf[1] %d\n", net_instaweb::CharToInt(buf[1]));
         if (net_instaweb::CharToInt(buf[1]) == 0xd8) {
           imageFormat_ = IMAGE_FORMAT_JPEG;
-          FindJpegSize();
-        }
-        if (net_instaweb::CharToInt(buf[1]) == 0x4f) {
-          imageFormat_ = IMAGE_FORMAT_JP2K;
           FindJpegSize();
         }
         break;
@@ -383,6 +381,14 @@ void Image::ComputeImageType() {
           FindPngSize();
         }
         break;
+      case 0x49:
+          //possible JXR
+          if (net_instaweb::CharToInt(buf[1]) == 0x49
+                  && net_instaweb::CharToInt(buf[2]) == 0xbc
+                  && net_instaweb::CharToInt(buf[3]) == 0x01) {
+              imageFormat_ = IMAGE_FORMAT_JXR;
+          }
+          break;
       case 'G':
         // Possible gif.
         if ((StringPiece(buf.data(), ImageHeaders::kGifHeaderLength) ==
