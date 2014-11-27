@@ -130,14 +130,11 @@ bool Image::analyze(bool verbose, bool checkTransparency, bool checkAnimated, bo
             
             if(checkTransparency) {
                 GraphicsControlBlock gcb;
-                if(DGifSavedExtensionToGCB(gif, 0, &gcb)) {
-                    if(verbose) fprintf(stdout, "libgif: TransparentColor=%i\n", gcb.TransparentColor);  
-                    bool isTransparent = CheckTranparentColorUsed(gif, gcb.TransparentColor);               
-                    if(verbose) fprintf(stdout, "libgif: IsTransparent=%i\n", isTransparent);
-                } else {
-                    fprintf(stderr, "Could not obtain GraphicsControlBlock for gif.");
-                    return false;
-                }
+                int result = DGifSavedExtensionToGCB(gif, 0, &gcb);
+                if(verbose && result == GIF_ERROR) fprintf(stdout, "libgif: no GraphicsControlBlock found using default values\n"); 
+                if(verbose) fprintf(stdout, "libgif: TransparentColor=%i\n", gcb.TransparentColor);  
+                bool isTransparent = CheckTranparentColorUsed(gif, gcb.TransparentColor);               
+                if(verbose) fprintf(stdout, "libgif: IsTransparent=%i\n", isTransparent);
             }
             
         }

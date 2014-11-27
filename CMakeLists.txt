@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (image-analysis-tool)
 
 set (ImageAnalysisTool_VERSION_MAJOR 0)
-set (ImageAnalysisTool_VERSION_MINOR 2)
+set (ImageAnalysisTool_VERSION_MINOR 3)
 configure_file (
   "${PROJECT_SOURCE_DIR}/ImageAnalysisToolConfig.h.in"
   "${PROJECT_BINARY_DIR}/ImageAnalysisToolConfig.h"
