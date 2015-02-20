@@ -200,6 +200,12 @@ int Image::width() {
 int Image::frames() {
     return frames_;
 }
+int Image::bitdepth() {
+    return bitdepth_;
+}
+int Image::colortype() {
+    return colortype_;
+}
 
 const char* Image::imageFormatAsString(){
     
@@ -296,8 +302,9 @@ void Image::FindPngSize() {
        StringPiece(ImageHeaders::kPngIHDR,
                    ImageHeaders::kPngSectionHeaderLength))) {
     width_ = net_instaweb::PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart);
-    height_ = net_instaweb::PngIntAtPosition(
-        buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize);
+    height_ = net_instaweb::PngIntAtPosition(buf, ImageHeaders::kIHDRDataStart + ImageHeaders::kPngIntSize);
+    bitdepth_ = net_instaweb::CharToInt(buf[ImageHeaders::kIHDRDataStart + (2 * ImageHeaders::kPngIntSize)]);
+    colortype_ = net_instaweb::CharToInt(buf[ImageHeaders::kIHDRDataStart + (2 * ImageHeaders::kPngIntSize) + 1]);
   } else {
     fprintf(stderr, "Couldn't find png dimensions (data truncated or IHDR missing).");
   }

@@ -56,6 +56,8 @@ public:
     int height();
     int width();
     int frames();
+    int bitdepth();
+    int colortype();
  
     
 private:
@@ -68,6 +70,8 @@ private:
     int height_;
     int width_;
     int frames_;
+    int bitdepth_;
+    int colortype_;
     
     bool  CheckTranparentColorUsed(const GifFileType* gif, int transparentColor);
     

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Shawn Bissell 
+ * Copyright 2014-2015 Shawn Bissell 
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -39,7 +39,7 @@ void print_usage (FILE* stream, int exit_code)
 {
     fprintf (stream, "Version: Image Analysis Tool %i.%i https://github.com/shawnbissell/image-analysis-tool\n", 
                     ImageAnalysisTool_VERSION_MAJOR, ImageAnalysisTool_VERSION_MINOR);
-    fprintf (stream, "Copyright: Shawn Bissell (C) 2014\n");
+    fprintf (stream, "Copyright: Shawn Bissell (C) 2015\n");
     fprintf (stream, "Usage:  %s options [ inputfile ... ]\n", program_name);
     fprintf (stream,
             "  -h  --help             Display this usage information.\n"
@@ -141,6 +141,10 @@ int main(int argc, char *argv[]) {
             if(checkAnimated) {
                 fprintf(stdout, "animated=%i\n", image.isAnimated());  
                 fprintf(stdout, "frames=%i\n", image.frames()); 
+            }
+            if(image.imageFormat() == IMAGE_PNG) {
+                 fprintf(stdout, "bitdepth=%i\n", image.bitdepth());
+                 fprintf(stdout, "colortype=%i\n", image.colortype());
             }
         } else {
             fprintf(stderr, "Could not analyze image");
