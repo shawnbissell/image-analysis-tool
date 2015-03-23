@@ -24,6 +24,8 @@ extern "C" {
 #include "gif_lib.h"
 }
 
+#define PNG_DEBUG 3
+#include <png.h>
 
 
 using namespace pagespeed::image_compression;
@@ -40,12 +42,11 @@ enum Format {
 
 class Image {
 public:
-    Image();
-    Image(const Image& orig);
+    Image(bool verbose);
     virtual ~Image();
     
     bool readFile(const GoogleString& file_name);
-    bool analyze(bool verbose, bool checkTransparency, bool checkAnimated, bool checkPhoto);
+    bool analyze(bool checkTransparency, bool checkAnimated, bool checkPhoto, bool checkExtended);
     bool isPhoto();
     bool isAnimated();
     bool hasTransparency();
@@ -58,9 +59,13 @@ public:
     int frames();
     int bitdepth();
     int colortype();
+    bool hasGamma();
+    double gamma();
  
     
 private:
+    bool verbose_;
+    GoogleString filename_;
     GoogleString content_;
     Format imageFormat_;
     bool analyzed_;
@@ -72,16 +77,19 @@ private:
     int frames_;
     int bitdepth_;
     int colortype_;
+    bool hasGamma_;
+    double gamma_;
     
     bool  CheckTranparentColorUsed(const GifFileType* gif, int transparentColor);
     
-    void ComputeImageType(bool verbose);
+    void ComputeImageType();
     void FindJpegSize();
     void FindPngSize();
+    void FindPngDetails();
     void FindGifSize();
     void FindWebpSize();
     
-   
+      
 
 };
 

@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.6)
 project (image-analysis-tool)
 
 set (ImageAnalysisTool_VERSION_MAJOR 0)
-set (ImageAnalysisTool_VERSION_MINOR 3)
+set (ImageAnalysisTool_VERSION_MINOR 5)
 configure_file (
   "${PROJECT_SOURCE_DIR}/ImageAnalysisToolConfig.h.in"
   "${PROJECT_BINARY_DIR}/ImageAnalysisToolConfig.h"
@@ -41,24 +41,56 @@ ExternalProject_Add(giflib
     INSTALL_COMMAND ""
 )
 
+
+ExternalProject_Add(zlib
+    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
+    URL http://zlib.net/zlib-1.2.8.tar.gz
+    URL_MD5 44d667c142d7cda120332623eab69f40
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/zlib
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/zlib/configure --prefix=<INSTALL_DIR>
+    BUILD_COMMAND ${MAKE}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+)
+
+ExternalProject_Add(libpng
+    DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
+    URL http://downloads.sourceforge.net/project/libpng/libpng16/1.6.16/libpng-1.6.16.tar.gz
+    URL_MD5 1a4ad377919ab15b54f6cb6a3ae2622d
+    SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libpng
+    CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/libpng/configure --prefix=<INSTALL_DIR> --with-zlib-prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib
+    BUILD_COMMAND ${MAKE}
+    BUILD_IN_SOURCE 1
+    INSTALL_COMMAND ""
+)
+
+
 include_directories(${PROJECT_BINARY_DIR})
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/zlib)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/third_party/chromium/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/psol/include/pagespeed/kernel)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/libwebp/src)
 include_directories(${CMAKE_CURRENT_BINARY_DIR}/giflib/lib)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/libpng)
 
 
 add_executable(imgat ImageAnalysisTool.cc Image.cc)
 
+
+add_dependencies(libpng zlib)
+
 add_dependencies(imgat libwebp)
 add_dependencies(imgat giflib)
+add_dependencies(imgat libpng)
 add_dependencies(imgat psol)
 
 target_link_libraries(imgat ${CMAKE_CURRENT_BINARY_DIR}/psol/lib/Release/linux/x64/pagespeed_automatic.a 
                             pthread rt
                             ${PROJECT_BINARY_DIR}/libwebp/src/.libs/libwebp.a
-                            ${PROJECT_BINARY_DIR}/giflib/lib/.libs/libgif.a
+                            ${PROJECT_BINARY_DIR}/giflib/lib/.libs/libgif.a          
+                            ${PROJECT_BINARY_DIR}/libpng/.libs/libpng16.a
+                            ${PROJECT_BINARY_DIR}/zlib/libz.a
 )
 
 install(TARGETS imgat

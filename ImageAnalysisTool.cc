@@ -46,6 +46,7 @@ void print_usage (FILE* stream, int exit_code)
             "  -p  --photo            Check if the image is a photo.\n"
             "  -t  --transparency     Check if the image usage transparency.\n"
             "  -a  --animated         Check if the image is animated.\n"
+            "  -e  --extended         Output extended PNG information (bit-depth, color-type, gamma).\n"
             "  -A  --All              Check all available options.\n"
             "  -v  --verbose          Print verbose messages.\n");
     exit (exit_code);
@@ -57,7 +58,7 @@ int main(int argc, char *argv[]) {
     int next_option;
 
     /* A string listing valid short options letters.  */
-    const char* const short_options = "hvptaA";
+    const char* const short_options = "hvptaeA";
     /* An array describing valid long options.  */
     const struct option long_options[] = {
         { "help",       0, NULL, 'h' },
@@ -65,6 +66,7 @@ int main(int argc, char *argv[]) {
         { "photo",      0, NULL, 'p' },
         { "transparency",0,NULL, 't' },
         { "animated",   0, NULL, 'a' },
+        { "extended",   0, NULL, 'e' },
         { "all",        0, NULL, 'A' },
         { NULL,         0, NULL, 0   }   /* Required at end of array.  */
     };
@@ -73,6 +75,7 @@ int main(int argc, char *argv[]) {
     int checkPhoto = 0;
     int checkTransparency = 0;
     int checkAnimated = 0;
+    int checkExtended = 0;
 
     /* Remember the name of the program, to incorporate in messages.
        The name is stored in argv[0].  */
@@ -98,10 +101,14 @@ int main(int argc, char *argv[]) {
         case 'a':   
           checkAnimated = 1;
           break;
+        case 'e':
+            checkExtended = 1;
+            break;
         case 'A':
           checkPhoto = 1;
           checkTransparency = 1;
           checkAnimated = 1;
+          checkExtended = 1;
           break;
         case '?':   /* The user specified an invalid option.  */
           /* Print usage information to standard error, and exit with exit
@@ -130,10 +137,10 @@ int main(int argc, char *argv[]) {
         GoogleString fileName;
         fileName.append(argv[optind]);
 
-        Image image;
+        Image image(verbose);
         image.readFile(fileName);
 
-        if(image.analyze(verbose, checkTransparency, checkAnimated, checkPhoto)) {
+        if(image.analyze(checkTransparency, checkAnimated, checkPhoto, checkExtended)) {
             fprintf(stdout, "format=%s\n",  image.imageFormatAsString());
             fprintf(stdout, "width=%i\nheight=%i\n", image.width(), image.height());
             if(checkPhoto) fprintf(stdout, "photo=%i\n", image.isPhoto()); 
@@ -142,9 +149,11 @@ int main(int argc, char *argv[]) {
                 fprintf(stdout, "animated=%i\n", image.isAnimated());  
                 fprintf(stdout, "frames=%i\n", image.frames()); 
             }
-            if(image.imageFormat() == IMAGE_PNG) {
-                 fprintf(stdout, "bitdepth=%i\n", image.bitdepth());
-                 fprintf(stdout, "colortype=%i\n", image.colortype());
+            if(checkExtended && image.imageFormat() == IMAGE_FORMAT_PNG) {
+                fprintf(stdout, "bitdepth=%i\n", image.bitdepth());
+                fprintf(stdout, "colortype=%i\n", image.colortype());
+                fprintf(stdout, "hasGamma=%i\n", image.hasGamma());
+                fprintf(stdout, "gamma=%f\n", image.gamma());
             }
         } else {
             fprintf(stderr, "Could not analyze image");
