@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Shawn Bissell 
+ * Copyright 2014-2015 Shawn Bissell 
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@
 
 #include "pagespeed/kernel/image/image_util.h"
 #include "pagespeed/kernel/image/image_analysis.h"
-//#include "pagespeed/kernel/image/test_utils.h"
 #include "pagespeed/kernel/base/stdio_file_system.h"
 #include "pagespeed/kernel/base/message_handler.h"
 #include "pagespeed/kernel/base/mock_message_handler.h"
@@ -29,10 +28,9 @@
 #include "webp/decode.h"
 #include "pagespeed/kernel/image/scanline_utils.h"
 
-
-
-
-
+extern "C" {
+#include "gif_err.c"    
+}
 
 using namespace pagespeed::image_compression;
 
@@ -67,7 +65,6 @@ Image::Image(bool verbose) :
         imageFormat_(IMAGE_FORMAT_UNKNOWN),
         height_(0),
         width_(0),
-        analyzed_(false),
         isPhoto_(false),
         isAnimated_(false),
         frames_(1),
@@ -82,110 +79,6 @@ Image::Image(bool verbose) :
 
 
 Image::~Image() {
-}
-
-bool Image::readFile(const GoogleString& file_name) {
-    filename_.append(file_name);
-    net_instaweb::StdioFileSystem file_system;
-    net_instaweb::StringWriter writer(&content_);
-    net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
-    return(file_system.ReadFile(filename_.c_str(), &writer, &messageHandler));
-}
-
-
-int ReadGifFromStream(GifFileType* gif_file, GifByteType* data, int length) {
-  pagespeed::image_compression::ScanlineStreamInput* input =
-    static_cast<pagespeed::image_compression::ScanlineStreamInput*>(
-      gif_file->UserData);
-  if (input->offset() + length <= input->length()) {
-    memcpy(data, input->data() + input->offset(), length);
-    input->set_offset(input->offset() + length);
-    return length;
-  } else {
-    fprintf(stderr, "Unexpected EOF.");
-    return 0;
-  }
-}
-
-bool Image::analyze(bool checkTransparency, bool checkAnimated, bool checkPhoto, bool checkExtended) {
-
-    net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
-    
-    ComputeImageType();
-    
-    if(imageFormat_ == IMAGE_FORMAT_GIF && (checkTransparency || checkAnimated)) {
-        if(verbose_) fprintf(stdout, "libgif: analyzing gif image\n"); 
-        ScanlineStreamInput input(NULL);
-        input.Initialize(content_);
-        GifFileType* gif = DGifOpen(&input, ReadGifFromStream, NULL);
-        if (!gif) {
-            fprintf(stderr, "Failed to get image descriptor.");
-            return false;
-        }
-        if(DGifSlurp(gif)) {
-            frames_ = gif->ImageCount;
-            if(verbose_) fprintf(stdout, "libgif: Frames=%i\n", frames_);  
-            if (frames_ <= 0) {
-                fprintf(stderr, "No frames in gif file.");
-                return false;
-            }
-            if (frames_ > 1) {
-                if(verbose_) fprintf(stdout, "libgif: IsAnimated=1\n"); 
-                isAnimated_ = true;
-            }
-            
-            if(checkTransparency) {
-                GraphicsControlBlock gcb;
-                int result = DGifSavedExtensionToGCB(gif, 0, &gcb);
-                if(verbose_ && result == GIF_ERROR) fprintf(stdout, "libgif: no GraphicsControlBlock found using default values\n"); 
-                if(verbose_) fprintf(stdout, "libgif: TransparentColor=%i\n", gcb.TransparentColor);  
-                bool isTransparent = CheckTranparentColorUsed(gif, gcb.TransparentColor); 
-                hasTransparency_ = (int)isTransparent;
-                if(verbose_) fprintf(stdout, "libgif: IsTransparent=%i\n", isTransparent);
-                checkTransparency = false;
-            }
-            
-        }
-        else {
-            fprintf(stderr, "Failed to analyze gif image.");
-            return false;
-        }
-        DGifCloseFile(gif, NULL);
-    }
-    if(imageFormat_ == IMAGE_FORMAT_PNG && checkExtended) {
-        FindPngDetails();
-    }
-        
-    if(!isAnimated_ && (checkTransparency || checkPhoto)) {
-        if(verbose_) fprintf(stdout, "pagespeed: analyzing image\n"); 
-        if(AnalyzeImage(getGoogleImageFormat(), content_.data(),
-                            content_.length(), &messageHandler,
-                            &hasTransparency_, &isPhoto_)) {
-            if(verbose_) fprintf(stdout, "pagespeed: HasTransparency=%i\n", hasTransparency_); 
-            if(verbose_) fprintf(stdout, "pagespeed: IsPhoto=%i\n", isPhoto_);  
-        }
-    }
-    analyzed_ = true;
-}
-
-bool Image::CheckTranparentColorUsed(const GifFileType* gif, int transparentColor) {
-    int width  = gif->Image.Width;
-    int height = gif->Image.Height;
-    for(int i=0; i < gif->ImageCount; i++) {
-        unsigned char *ptr = gif->SavedImages[i].RasterBits;
-        int color;
-        for (int j=height-1; j>=0; j--) {
-            int index = 3*j*width;
-            for (int i=0; i < width; i++) {
-                color = *ptr++;
-                if(color == transparentColor) {
-                    hasTransparency_ = true;
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
 }
 
 bool Image::isPhoto() {
@@ -251,6 +144,212 @@ ImageFormat Image::getGoogleImageFormat()
         default: return IMAGE_UNKNOWN;
     }
 }
+
+
+bool Image::readFile(const GoogleString& file_name) {
+    filename_.append(file_name);
+    net_instaweb::StdioFileSystem file_system;
+    net_instaweb::StringWriter writer(&content_);
+    net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
+    return(file_system.ReadFile(filename_.c_str(), &writer, &messageHandler));
+}
+
+
+
+bool Image::analyze(bool checkTransparency, bool checkAnimated, bool checkPhoto, bool checkExtended) {
+
+    net_instaweb::MockMessageHandler messageHandler(new net_instaweb::NullMutex);
+    
+    ComputeImageType();
+    if(imageFormat_ == IMAGE_FORMAT_UNKNOWN) {
+        fprintf(stderr, "Unknown Image Format.\n");
+        return false;   
+    }
+    
+    if(imageFormat_ == IMAGE_FORMAT_GIF && (checkTransparency || checkAnimated)) {
+        if(!FindGifDetails(checkTransparency))
+        {
+            fprintf(stderr, "Failed to find GIF details.\n");
+            return false;
+        }
+    }
+    if(imageFormat_ == IMAGE_FORMAT_PNG && checkExtended) {
+        if(!FindPngDetails()){
+            fprintf(stderr, "Failed to find PNG details.\n");
+            return false;
+        }
+            
+    }
+        
+    if(!isAnimated_ && (checkTransparency || checkPhoto)
+            && imageFormat_ != IMAGE_FORMAT_JP2K
+            && imageFormat_ != IMAGE_FORMAT_JXR) {
+        if(verbose_) fprintf(stdout, "pagespeed: analyzing image\n"); 
+        if(AnalyzeImage(getGoogleImageFormat(), content_.data(),
+                            content_.length(), &messageHandler,
+                            &hasTransparency_, &isPhoto_)) {
+            if(verbose_) fprintf(stdout, "pagespeed: HasTransparency=%i\n", hasTransparency_); 
+            if(verbose_) fprintf(stdout, "pagespeed: IsPhoto=%i\n", isPhoto_);  
+        } else {
+            return false;
+        }
+    }
+}
+
+
+
+// Gif handling with GifLib
+int ReadGifFromStream(GifFileType* gif_file, GifByteType* data, int length) {
+  pagespeed::image_compression::ScanlineStreamInput* input =
+    static_cast<pagespeed::image_compression::ScanlineStreamInput*>(
+      gif_file->UserData);
+  if (input->offset() + length <= input->length()) {
+    memcpy(data, input->data() + input->offset(), length);
+    input->set_offset(input->offset() + length);
+    return length;
+  } else {
+    fprintf(stderr, "Unexpected EOF.\n");
+    return 0;
+  }
+}
+
+bool Image::FindGifDetails(bool checkTransparency) {
+    if(verbose_) fprintf(stdout, "libgif: analyzing gif image\n"); 
+    ScanlineStreamInput input(NULL);
+    input.Initialize(content_);
+    GifFileType* gif = DGifOpen(&input, ReadGifFromStream, NULL);
+    if (!gif) {
+        fprintf(stderr, "Failed to get image descriptor.\n");
+        return false;
+    }
+    if(DGifSlurp(gif)) {
+        frames_ = gif->ImageCount;
+        if(verbose_) fprintf(stdout, "libgif: Frames=%i\n", frames_);  
+        if (frames_ <= 0) {
+            fprintf(stderr, "No frames in gif file.\n");
+            return false;
+        }
+        if (frames_ > 1) {
+            if(verbose_) fprintf(stdout, "libgif: IsAnimated=1\n"); 
+            isAnimated_ = true;
+        }
+
+        if(checkTransparency) {
+            GraphicsControlBlock gcb;
+            int result = DGifSavedExtensionToGCB(gif, 0, &gcb);
+            if(verbose_ && result == GIF_ERROR) fprintf(stdout, "libgif: no GraphicsControlBlock found using default values\n"); 
+            if(verbose_) fprintf(stdout, "libgif: TransparentColor=%i\n", gcb.TransparentColor);  
+            bool isTransparent = CheckTranparentColorUsed(gif, gcb.TransparentColor); 
+            hasTransparency_ = (int)isTransparent;
+            if(verbose_) fprintf(stdout, "libgif: IsTransparent=%i\n", isTransparent);
+            checkTransparency = false;
+        }
+
+    }
+    else {
+        const char* giflib_error_str = (const char*) GifErrorString(gif->Error);
+        if (giflib_error_str == NULL) giflib_error_str = "Unknown error";
+        if(verbose_) fprintf(stdout, "libgif: failed to slurp gif, %s\n", giflib_error_str ); 
+        DGifCloseFile(gif, NULL);
+        return false;
+    }
+    DGifCloseFile(gif, NULL);
+    return true;
+}
+
+bool Image::CheckTranparentColorUsed(const GifFileType* gif, int transparentColor) {
+    int width  = gif->Image.Width;
+    int height = gif->Image.Height;
+    for(int i=0; i < gif->ImageCount; i++) {
+        unsigned char *ptr = gif->SavedImages[i].RasterBits;
+        int color;
+        for (int j=height-1; j>=0; j--) {
+            int index = 3*j*width;
+            for (int i=0; i < width; i++) {
+                color = *ptr++;
+                if(color == transparentColor) {
+                    hasTransparency_ = true;
+                    return true;
+                }
+            }
+        }
+    }
+    return false;
+}
+
+//PNG handling with libpng
+bool Image::FindPngDetails() {
+    const StringPiece& buf = content_;
+  
+    png_structp png_ptr;
+    png_infop info_ptr;
+    
+
+    if ((buf.size() > 0)) {// Not truncated
+        FILE *fp = fopen(filename_.c_str(), "rb");
+        if (!fp) {
+           fprintf(stderr, "FindPngDetails File %s could not be opened for reading\n", filename_.c_str());
+           return false;
+        }
+        
+        char header[8];
+        fread(header, 1, 8, fp);
+       
+        if (png_sig_cmp(reinterpret_cast<png_const_bytep>(header), 0, 8)) {
+            fprintf(stderr, "FindPngDetails Did not recognize file has a PNG\n");
+            fclose(fp);
+            return false;
+        }
+       
+       /* initialize stuff */
+        png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+
+        if (!png_ptr) {
+            fprintf(stderr, "FindPngDetails png_create_read_struct failed\n");
+            png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
+            fclose(fp);
+            return false;
+        }
+
+        info_ptr = png_create_info_struct(png_ptr);
+        if (!info_ptr) {
+            fprintf(stderr, "FindPngDetails png_create_info_struct failed\n");
+            png_destroy_read_struct(&png_ptr, (png_infopp)NULL, (png_infopp)NULL);
+            fclose(fp);
+            return false;
+        }
+
+        if(verbose_) fprintf(stdout, "libpng: init\n");
+        
+        if (setjmp(png_jmpbuf(png_ptr))) {
+            
+            fprintf(stderr, "FindPngDetails setjmp Error\n");
+            png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
+            fclose(fp);
+            return false;
+        }
+        
+        if(verbose_) fprintf(stdout, "libpng: Reading in PNG\n");
+        png_init_io(png_ptr, fp);
+        png_set_sig_bytes(png_ptr, 8);
+        png_read_info(png_ptr, info_ptr);
+        
+        if(!png_get_gAMA(png_ptr, info_ptr, &gamma_)){
+            if(verbose_) fprintf(stdout, "libpng: Gamma was not found in PNG, using default value.\n");
+            gamma_ = .454545;
+        } else {
+            if(verbose_) fprintf(stdout, "libpng: Gamma was found in PNG.\n");
+            hasGamma_ = true;
+        }
+            
+        fclose(fp);
+        return true;
+    } else {
+      fprintf(stderr, "Couldn't find png details (data truncated or IHDR missing).\n");
+      return false;
+    }
+}
+
     
 
 //From modpagespeed ImageImpl Class
@@ -328,60 +427,7 @@ void Image::FindPngSize() {
   }
 }
   
-void Image::FindPngDetails() {
-    const StringPiece& buf = content_;
-  
-    png_structp png_ptr;
-    png_infop info_ptr;
-    
 
-    if ((buf.size() > 0)) {// Not truncated
-        //const png_bytep data = const_cast<const png_bytep>(reinterpret_cast<const unsigned char *>(buf.data()));
-        FILE *fp = fopen(filename_.c_str(), "rb");
-        if (!fp)
-           fprintf(stderr, "FindPngDetails File %s could not be opened for reading", filename_.c_str());
-        
-        char header[8];
-        fread(header, 1, 8, fp);
-       
-        if (png_sig_cmp(reinterpret_cast<png_const_bytep>(header), 0, 8))
-            fprintf(stderr, "FindPngDetails Did not recognize file has a PNG");
-       
-       /* initialize stuff */
-        png_ptr = png_create_read_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
-
-        if (!png_ptr)
-            fprintf(stderr, "FindPngDetails png_create_read_struct failed");
-
-        info_ptr = png_create_info_struct(png_ptr);
-        if (!info_ptr)
-            fprintf(stderr, "FindPngDetails png_create_info_struct failed");
-
-        if (setjmp(png_jmpbuf(png_ptr)))
-            fprintf(stderr, "FindPngDetails Error during init_io");
-
-        if(verbose_) fprintf(stdout, "libpng: init\n");
-        png_init_io(png_ptr, fp);
-        png_set_sig_bytes(png_ptr, 8);
-        
-        if(verbose_) fprintf(stdout, "libpng: Reading in PNG\n");
-        
-        png_read_info(png_ptr, info_ptr);
-        
-        if(!png_get_gAMA(png_ptr, info_ptr, &gamma_)){
-            if(verbose_) fprintf(stdout, "libpng: Gamma was not found in PNG, using default value\n");
-            gamma_ = .454545;
-        } else {
-            hasGamma_ = true;
-        }
-            
-        fclose(fp);
-       
-
-    } else {
-      fprintf(stderr, "Couldn't find png details (data truncated or IHDR missing).");
-    }
-}
 
 // Looks at header of GIF file to extract image dimensions.
 // See also: http://en.wikipedia.org/wiki/Graphics_Interchange_Format

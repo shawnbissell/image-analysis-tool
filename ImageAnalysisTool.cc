@@ -113,7 +113,7 @@ int main(int argc, char *argv[]) {
         case '?':   /* The user specified an invalid option.  */
           /* Print usage information to standard error, and exit with exit
              code one (indicating abnormal termination).  */
-          print_usage (stderr, 1);
+          print_usage (stderr, 69);
           return 1;
         case -1:    /* Done with options.  */
           break;
@@ -138,7 +138,10 @@ int main(int argc, char *argv[]) {
         fileName.append(argv[optind]);
 
         Image image(verbose);
-        image.readFile(fileName);
+        if(!image.readFile(fileName)){
+            fprintf(stderr, "Could not read image\n");
+            return 66;
+        }
 
         if(image.analyze(checkTransparency, checkAnimated, checkPhoto, checkExtended)) {
             fprintf(stdout, "format=%s\n",  image.imageFormatAsString());
@@ -156,10 +159,10 @@ int main(int argc, char *argv[]) {
                 fprintf(stdout, "gamma=%f\n", image.gamma());
             }
         } else {
-            fprintf(stderr, "Could not analyze image");
+            fprintf(stderr, "Could not analyze image.\n");
+            return 65;
         }
         return 0;
-    }
-
-    return 1;
+    } 
+    print_usage (stderr, 64);
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright 2014 Shawn Bissell 
+ * Copyright 2014-2015 Shawn Bissell 
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@
 #include "pagespeed/kernel/image/image_util.h"
 
 extern "C" {
-#include "gif_lib.h"
+#include "gif_lib.h"    
 }
 
 #define PNG_DEBUG 3
@@ -68,7 +68,6 @@ private:
     GoogleString filename_;
     GoogleString content_;
     Format imageFormat_;
-    bool analyzed_;
     bool isPhoto_;
     bool isAnimated_;
     bool hasTransparency_;
@@ -85,8 +84,9 @@ private:
     void ComputeImageType();
     void FindJpegSize();
     void FindPngSize();
-    void FindPngDetails();
+    bool FindPngDetails();
     void FindGifSize();
+    bool FindGifDetails(bool checkTransparency);
     void FindWebpSize();
     
       
