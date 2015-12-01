@@ -55,7 +55,7 @@ ExternalProject_Add(zlib
 
 ExternalProject_Add(libpng
     DOWNLOAD_DIR ${CMAKE_CURRENT_BINARY_DIR}/download
-    URL http://downloads.sourceforge.net/project/libpng/libpng16/1.6.16/libpng-1.6.16.tar.gz
+    URL http://downloads.sourceforge.net/project/libpng/libpng16/older-releases/1.6.16/libpng-1.6.16.tar.gz
     URL_MD5 1a4ad377919ab15b54f6cb6a3ae2622d
     SOURCE_DIR ${CMAKE_CURRENT_BINARY_DIR}/libpng
     CONFIGURE_COMMAND ${CMAKE_CURRENT_BINARY_DIR}/libpng/configure --prefix=<INSTALL_DIR> --with-zlib-prefix=${CMAKE_CURRENT_BINARY_DIR}/zlib
